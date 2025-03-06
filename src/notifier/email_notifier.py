@@ -25,7 +25,7 @@ class EmailNotifier:
 
     def send_error_message(self, error_msg: str, response_data: dict) -> None:
         """Send error notification email if configured"""
-        subject = f"Error ({error_msg})"
+        subject = error_msg
 
         body = f"NTU Auto Signing failed: {error_msg}\n\n"
         if "d" in response_data:
@@ -34,4 +34,4 @@ class EmailNotifier:
             body += f"System Message: {response_data['msg']}\n"
         body += f"Response: {json.dumps(response_data, indent=2)}"
 
-        self.send_message(subject, body, self.config)
+        self.send_message(subject, body)

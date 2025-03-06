@@ -5,8 +5,8 @@ from pydantic import BaseModel
 
 
 class UserConfig(BaseModel):
-    UserName: str
-    Password: str
+    username: str
+    password: str
 
 
 class MailConfig(BaseModel):

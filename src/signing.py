@@ -6,7 +6,7 @@ from loguru import logger
 
 from src.config import Config
 from src.notifier.email_notifier import EmailNotifier
-from src.singer.web_signer import WebSigner
+from src.signer.web_signer import WebSigner
 
 
 def get_tz() -> timezone:
@@ -18,20 +18,24 @@ def get_dt_now():
     return datetime.now(tz=tz)
 
 
-def get_signin_and_signout_time(date: datetime) -> tuple[datetime, datetime]:
+def get_signin_and_signout_times(date: datetime) -> tuple[tuple[datetime, datetime], tuple[datetime, datetime]]:
     """Get random delay time in seconds"""
-    delay1 = (date.year * 41 + date.month * 41**2 + date.day * 41**3) % 1777
-    delay2 = (date.year * 43 + date.month * 43**2 + date.day * 43**3) % 2999
-    if delay1 > delay2:
-        delay1, delay2 = delay2, delay1
+    a = (date.year * 41 + date.month * 41**2 + date.day * 41**3) % 599
+    b = (date.year * 43 + date.month * 43**2 + date.day * 43**3) % 599 + 599
+    c = (date.year * 47 + date.month * 47**2 + date.day * 47**3) % 599 + 2396
+    d = (date.year * 53 + date.month * 53**2 + date.day * 53**3) % 599 + 3594
 
-    signin_time = datetime(date.year, date.month, date.day, 8, 0, 0, tzinfo=get_tz()) + timedelta(seconds=delay1)
-    signout_time = datetime(date.year, date.month, date.day, 17, 0, 0, tzinfo=get_tz()) + timedelta(seconds=delay2)
-    return signin_time, signout_time
+
+    signin_time1 = datetime(date.year, date.month, date.day, 8, 0, 0, tzinfo=get_tz()) + timedelta(seconds=a)
+    signin_time2 = datetime(date.year, date.month, date.day, 8, 0, 0, tzinfo=get_tz()) + timedelta(seconds=b)
+    signout_time1 = datetime(date.year, date.month, date.day, 17, 0, 0, tzinfo=get_tz()) + timedelta(seconds=c)
+    signout_time2 = datetime(date.year, date.month, date.day, 17, 0, 0, tzinfo=get_tz()) + timedelta(seconds=d)
+    return (signin_time1, signin_time2), (signout_time1, signout_time2)
 
 
 def sign_once(action: Literal["signin", "signout"], config: Config) -> None:
-    with WebSigner(config) as signer, EmailNotifier(config.mail) as notifier:
+    notifier = EmailNotifier(config.mail)
+    with WebSigner(config.user) as signer:
         _sign_once(signer, notifier, action)
 
 
@@ -39,9 +43,9 @@ def _sign_once(signer: WebSigner, notifier: EmailNotifier, action: Literal["sign
     class UnknownError(Exception): ...
 
     try:
-        signer.login()
+        signer.login_myntu()
 
-        if not signer.verify_login():
+        if not signer.check_login_success_on_attend_page():
             msg = "Login failed: check username/password"
             raise ValueError(msg)
 
@@ -55,7 +59,7 @@ def _sign_once(signer: WebSigner, notifier: EmailNotifier, action: Literal["sign
         logger.info(f"Sign {action} success: {result}")
         notifier.send_message(f"[NTU Auto Signing] Sign {action} success", str(result))
 
-    except ValueError as e:
+    except UnknownError as e:
         logger.error(f"Error: {e}")
         notifier.send_error_message(f"[NTU Auto Signing] {error_msg}", result)
 
@@ -75,25 +79,27 @@ def schedule_week_sign_actions(scheduler: sched.scheduler, config: Config) -> No
         day_dt = current_dt + timedelta(days=day_offset)
         # 0-4 are Monday-Friday
         if day_dt.weekday() < 5:  # noqa: PLR2004
-            signin_time, signout_time = get_signin_and_signout_time(day_dt)
+            signin_times,  signout_times = get_signin_and_signout_times(day_dt)
 
             # Only schedule future events
-            if signin_time > current_dt:
-                scheduler.enterabs(
-                    signin_time.timestamp(),
-                    1,
-                    sign_once,
-                    argument=("signin", config),
-                )
-                logging_string += f"Sign in scheduled at {signin_time.strftime('%Y-%m-%d %H:%M:%S')}\n"
-            if signout_time > current_dt:
-                scheduler.enterabs(
-                    signout_time.timestamp(),
-                    1,
-                    sign_once,
-                    argument=("signout", config),
-                )
-                logging_string += f"Sign out scheduled at {signout_time.strftime('%Y-%m-%d %H:%M:%S')}\n"
+            for signin_time in signin_times:
+                if signin_time > current_dt:
+                    scheduler.enterabs(
+                        signin_time.timestamp(),
+                        1,
+                        sign_once,
+                        argument=("signin", config),
+                    )
+                    logging_string += f"Sign in scheduled at {signin_time.strftime('%Y-%m-%d %H:%M:%S')}\n"
+            for signout_time in signout_times:
+                if signout_time > current_dt:
+                    scheduler.enterabs(
+                        signout_time.timestamp(),
+                        1,
+                        sign_once,
+                        argument=("signout", config),
+                    )
+                    logging_string += f"Sign out scheduled at {signout_time.strftime('%Y-%m-%d %H:%M:%S')}\n"
 
     logger.info("Scheduled sign-in/out actions:\n" + logging_string)
     EmailNotifier(config.mail).send_message("[NTU Auto Signing] Scheduled Sign-in/out", logging_string)
