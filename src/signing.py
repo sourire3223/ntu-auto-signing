@@ -95,5 +95,5 @@ def schedule_week_sign_actions(scheduler: sched.scheduler, config: Config) -> No
                 )
                 logging_string += f"Sign out scheduled at {signout_time.strftime('%Y-%m-%d %H:%M:%S')}\n"
 
-    logger.info(logging_string)
+    logger.info("Scheduled sign-in/out actions:\n" + logging_string)
     EmailNotifier(config.mail).send_message("[NTU Auto Signing] Scheduled Sign-in/out", logging_string)

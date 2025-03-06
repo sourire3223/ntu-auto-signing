@@ -299,7 +299,7 @@ wheels = [
 ]
 
 [[package]]
-name = "ntu-suto-signing"
+name = "ntu-auto-signing"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
@@ -313,8 +313,6 @@ dependencies = [
 dev = [
     { name = "ipykernel" },
     { name = "pytest" },
-]
-lint = [
     { name = "ruff" },
 ]
 
@@ -330,8 +328,8 @@ requires-dist = [
 dev = [
     { name = "ipykernel" },
     { name = "pytest" },
+    { name = "ruff" },
 ]
-lint = [{ name = "ruff" }]
 
 [[package]]
 name = "packaging"
