@@ -123,7 +123,7 @@ class WebSigner:
                 "X-Requested-With": "XMLHttpRequest",
             }
         )
-        exit()
+
         action_map = {"signin": 1, "signout": 2}
         if action not in action_map:
             raise ValueError(f"Unknown action: {action}")
