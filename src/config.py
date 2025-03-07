@@ -1,7 +1,8 @@
 import configparser
 from pathlib import Path
 
-from pydantic import BaseModel
+from pydantic import BaseModel, model_validator, Field
+from typing import Any
 
 
 class UserConfig(BaseModel):
@@ -10,11 +11,17 @@ class UserConfig(BaseModel):
 
 
 class MailConfig(BaseModel):
-    Host: str
-    TlsPort: int
-    User: str
-    Password: str
-    SendWraningMail: bool
+    host: str
+    tls_port: int
+    from_: str = Field(alias="from")
+    password: str
+    to: str
+
+    @model_validator(mode="before")
+    @classmethod
+    def get_address(cls, values: dict[str, Any]) -> dict[str, Any]:
+        values.setdefault("to", values["from"])
+        return values
 
 
 class Config(BaseModel):

@@ -173,11 +173,15 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
-# credentials files
-config.ini
+# secret files
+**secret**
 
 # ipynb
 *.ipynb
 
 # docs
 *.md
+
+# docker
+**Dockerfile
+**/.dockerignore

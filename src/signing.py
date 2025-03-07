@@ -25,12 +25,23 @@ def get_signin_and_signout_times(date: datetime) -> tuple[tuple[datetime, dateti
     c = (date.year * 47 + date.month * 47**2 + date.day * 47**3) % 599 + 2396
     d = (date.year * 53 + date.month * 53**2 + date.day * 53**3) % 599 + 3594
 
-
     signin_time1 = datetime(date.year, date.month, date.day, 8, 0, 0, tzinfo=get_tz()) + timedelta(seconds=a)
     signin_time2 = datetime(date.year, date.month, date.day, 8, 0, 0, tzinfo=get_tz()) + timedelta(seconds=b)
     signout_time1 = datetime(date.year, date.month, date.day, 17, 0, 0, tzinfo=get_tz()) + timedelta(seconds=c)
     signout_time2 = datetime(date.year, date.month, date.day, 17, 0, 0, tzinfo=get_tz()) + timedelta(seconds=d)
     return (signin_time1, signin_time2), (signout_time1, signout_time2)
+
+
+def format_error_message(error_msg: str, response_data: dict) -> str:
+    """Format error message with response data to title and content"""
+    title = f"[NTU Auto Signing] {error_msg}"
+    content = f"NTU Auto Signing failed: {error_msg}\n\n"
+    if "d" in response_data:
+        content += f"Timestamp: {response_data['d']}\n"
+    if "msg" in response_data:
+        content += f"System Message: {response_data['msg']}\n"
+    content += f"Response: {response_data}"
+    return title, content
 
 
 def sign_once(action: Literal["signin", "signout"], config: Config) -> None:
@@ -61,12 +72,14 @@ def _sign_once(signer: WebSigner, notifier: EmailNotifier, action: Literal["sign
 
     except UnknownError as e:
         logger.error(f"Error: {e}")
-        notifier.send_error_message(f"[NTU Auto Signing] {error_msg}", result)
+        title, content = format_error_message(str(e), result)
+        notifier.send_message(title, content)
 
     except Exception as e:
         error_data = {"t": -1, "msg": str(e)}
         logger.error(f"Error: {e}")
-        notifier.send_error_message(f"[NTU Auto Signing] {e}", error_data)
+        title, content = format_error_message(str(e), error_data)
+        notifier.send_message(title, content)
 
 
 def schedule_week_sign_actions(scheduler: sched.scheduler, config: Config) -> None:
@@ -79,7 +92,7 @@ def schedule_week_sign_actions(scheduler: sched.scheduler, config: Config) -> No
         day_dt = current_dt + timedelta(days=day_offset)
         # 0-4 are Monday-Friday
         if day_dt.weekday() < 5:  # noqa: PLR2004
-            signin_times,  signout_times = get_signin_and_signout_times(day_dt)
+            signin_times, signout_times = get_signin_and_signout_times(day_dt)
 
             # Only schedule future events
             for signin_time in signin_times:
