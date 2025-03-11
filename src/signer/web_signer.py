@@ -33,12 +33,8 @@ class WebSigner:
         self.session.get(self.BASE_URL).raise_for_status()
 
         # Step 1: Navigate to login page to get redirect
-        self.session.headers.update({
-            "Host": "my.ntu.edu.tw",
-            "Referer": "https://my.ntu.edu.tw/attend/ssi.aspx"
-        })
-        response = self.session.get("https://my.ntu.edu.tw/attend/ssi.aspx?type=login",
-                                    allow_redirects=False)
+        self.session.headers.update({"Host": "my.ntu.edu.tw", "Referer": "https://my.ntu.edu.tw/attend/ssi.aspx"})
+        response = self.session.get("https://my.ntu.edu.tw/attend/ssi.aspx?type=login", allow_redirects=False)
         response.raise_for_status()
 
         # Step 2: Follow first redirect to NTU portal
@@ -48,36 +44,27 @@ class WebSigner:
 
         # Step 3: Follow redirect to login page
         redirect_url = response.headers["Location"]
-        self.session.headers.update({
-            "Host": "web2.cc.ntu.edu.tw",
-            "Referer": "https://my.ntu.edu.tw/attend/ssi.aspx"
-        })
+        self.session.headers.update({"Host": "web2.cc.ntu.edu.tw", "Referer": "https://my.ntu.edu.tw/attend/ssi.aspx"})
         self.session.get(redirect_url, allow_redirects=False).raise_for_status()
 
         # Step 4: Submit login credentials
-        self.session.headers.update({
-            "Host": "web2.cc.ntu.edu.tw",
-            "Origin": "https://web2.cc.ntu.edu.tw",
-            "Content-Type": "application/x-www-form-urlencoded",
-            "Referer": "https://web2.cc.ntu.edu.tw/p/s/login2/p1.php"
-        })
-        login_data = {
-            "user": self.config.username,
-            "pass": self.config.password,
-            "Submit": "登入"
-        }
+        self.session.headers.update(
+            {
+                "Host": "web2.cc.ntu.edu.tw",
+                "Origin": "https://web2.cc.ntu.edu.tw",
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Referer": "https://web2.cc.ntu.edu.tw/p/s/login2/p1.php",
+            }
+        )
+        login_data = {"user": self.config.username, "pass": self.config.password, "Submit": "登入"}
         response = self.session.post(
-            "https://web2.cc.ntu.edu.tw/p/s/login2/p1.php",
-            data=login_data,
-            allow_redirects=False
+            "https://web2.cc.ntu.edu.tw/p/s/login2/p1.php", data=login_data, allow_redirects=False
         )
         response.raise_for_status()
 
         # Step 5: Follow redirect back to portal
         redirect_url = response.headers["Location"]
-        self.session.headers.update({
-            "Host": "my.ntu.edu.tw"
-        })
+        self.session.headers.update({"Host": "my.ntu.edu.tw"})
         # Remove unnecessary headers
         for header in ["Origin", "Content-Type"]:
             if header in self.session.headers:
@@ -113,6 +100,12 @@ class WebSigner:
 
     def sign(self, action: Literal["signin", "signout"]) -> dict:
         """Perform sign in/out action"""
+        if action == "signin":
+            return self.signin()
+        return self.signout()
+
+    def signin(self) -> dict:
+        """Sign in action"""
         url = "https://my.ntu.edu.tw/attend/ajax/signInR2.ashx"
         self.session.headers.update(
             {
@@ -123,12 +116,32 @@ class WebSigner:
                 "X-Requested-With": "XMLHttpRequest",
             }
         )
+        data = {"type": 6, "otA": 0, "t": 1}
+        response = self.session.post(url, data=data)
+        response.raise_for_status()
+        return json.loads(response.text.strip())[0]
 
-        action_map = {"signin": 1, "signout": 2}
-        if action not in action_map:
-            raise ValueError(f"Unknown action: {action}")
+    def signout(self) -> dict:
+        """Sign out action"""
+        url = "https://my.ntu.edu.tw/attend/ajax/signInR2.ashx"
+        self.session.headers.update(
+            {
+                "Host": "my.ntu.edu.tw",
+                "Origin": "https://my.ntu.edu.tw",
+                "Referer": "https://my.ntu.edu.tw/attend/ssi.aspx",
+                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                "X-Requested-With": "XMLHttpRequest",
+            }
+        )
+        data = {"type": 6, "otA": 0, "t": 2}
+        response = self.session.post(url, data=data)
+        response.raise_for_status()
+        response_dict = json.loads(response.text.strip())[0]
 
-        data = {"type": 6, "otA": 0, "t": action_map[action]}
+        if response_dict["t"] == 1 or "申請加班" not in response_dict["msg"]:
+            return response_dict
+
+        data = {"type": 6, "otA": 1, "t": 2}
         response = self.session.post(url, data=data)
         response.raise_for_status()
         return json.loads(response.text.strip())[0]
