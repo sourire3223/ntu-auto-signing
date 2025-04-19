@@ -142,10 +142,10 @@ def check(config: Config) -> None:
 
             if have_signed:
                 logger.info(f"Cehck {action} success")
-                notifier.send_message(f"[NTU Auto Signing] Check {action} success", "")
+                # notifier.send_message(f"[NTU Auto Signing] Check {action} success", "")
             else:
-                logger.info(f"Check {action} failed")
-                notifier.send_message(f"[NTU Auto Signing] Check {action} failed", "")
+                logger.error(f"Check {action} failed")
+                notifier.send_message("[NTU Auto Signing] 出事啦 阿伯", "")
 
         except Exception as e:
             error_data = {"t": -1, "msg": str(e)}
