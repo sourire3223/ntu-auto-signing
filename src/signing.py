@@ -116,3 +116,39 @@ def schedule_week_sign_actions(scheduler: sched.scheduler, config: Config) -> No
 
     logger.info("Scheduled sign-in/out actions:\n" + logging_string)
     EmailNotifier(config.mail).send_message("[NTU Auto Signing] Scheduled Sign-in/out", logging_string)
+
+
+def check(config: Config) -> None:
+    """Check sign-in from 0 to 17 / sign-out from 17 to 24 and send email notification"""
+    notifier = EmailNotifier(config.mail)
+
+    now = get_dt_now()
+    today_str = now.strftime("%Y-%m-%d")
+
+    with WebSigner(config.user) as signer:
+        try:
+            signer.login_myntu()
+
+            if not signer.check_login_success_on_attend_page():
+                msg = "Login failed: check username/password"
+                raise ValueError(msg)
+
+            if now.hour < 17:
+                action = "signin"
+                have_signed = signer.check_signin(today_str)
+            else:
+                action = "signout"
+                have_signed = signer.check_signout(today_str)
+
+            if have_signed:
+                logger.info(f"Cehck {action} success")
+                notifier.send_message(f"[NTU Auto Signing] Check {action} success", "")
+            else:
+                logger.info(f"Check {action} failed")
+                notifier.send_message(f"[NTU Auto Signing] Check {action} failed", "")
+
+        except Exception as e:
+            error_data = {"t": -1, "msg": str(e)}
+            logger.error(f"Error: {e}")
+            title, content = format_error_message(str(e), error_data)
+            notifier.send_message(title, content)

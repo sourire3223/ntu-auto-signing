@@ -1,4 +1,5 @@
 import json
+import re
 from typing import Literal
 from urllib.parse import urljoin
 
@@ -145,6 +146,47 @@ class WebSigner:
         response = self.session.post(url, data=data)
         response.raise_for_status()
         return json.loads(response.text.strip())[0]
+
+    def _get_sign_records(self) -> dict:
+        url = "https://my.ntu.edu.tw/attend/ajax/signInR2.ashx"
+        self.session.headers.update(
+            {
+                "Host": "my.ntu.edu.tw",
+                "Origin": "https://my.ntu.edu.tw",
+                "Referer": "https://my.ntu.edu.tw/attend/ssi.aspx",
+                "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+                "X-Requested-With": "XMLHttpRequest",
+            }
+        )
+        data = {"type": 4, "day": 7}
+        response = self.session.post(url, data=data)
+        response.raise_for_status()
+
+        return response.json()
+
+    def check_signin(self, date: str) -> bool:
+        """Check if the sign-in record exists for today
+        Args:
+            records (list[dict]): List of sign-in records.
+                                  e.g. {"signdate":"2025-04-18","startdate":"08:52:52","enddate":"18:06:51"}]
+        """
+        records = self._get_sign_records()
+        for record in records:
+            if record["signdate"] == date and re.match(r"08:\d{2}:\d{2}", record["startdate"]):
+                return True
+        return False
+
+    def check_signout(self, date: str) -> dict:
+        """Check if the sign-out record exists for today
+        Args:
+            records (list[dict]): List of sign-in records.
+                                  e.g. {"signdate":"2025-04-18","startdate":"08:52:52","enddate":"18:06:51"}]
+        """
+        records = self._get_sign_records()
+        for record in records:
+            if record["signdate"] == date and re.match(r"(17|18|19|20|21):\d{2}:\d{2}", record["enddate"]):
+                return True
+        return False
 
     def close(self) -> None:
         """Close HTTP session"""
