@@ -141,7 +141,7 @@ def check(config: Config) -> None:
                 have_signed = signer.check_signout(today_str)
 
             if have_signed:
-                logger.info(f"Cehck {action} success")
+                logger.info(f"Check {action} success")
                 # notifier.send_message(f"[NTU Auto Signing] Check {action} success", "")
             else:
                 logger.error(f"Check {action} failed")
