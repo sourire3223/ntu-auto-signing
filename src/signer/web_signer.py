@@ -171,10 +171,11 @@ class WebSigner:
                                   e.g. {"signdate":"2025-04-18","startdate":"08:52:52","enddate":"18:06:51"}]
         """
         records = self._get_sign_records()
-        for record in records:
-            if record["signdate"] == date and re.match(r"08:\d{2}:\d{2}", record["startdate"]):
-                return True
-        return False
+        return [
+            record
+            for record in records
+            if record["signdate"] == date and re.match(r"08:\d{2}:\d{2}", record["startdate"])
+        ]
 
     def check_signout(self, date: str) -> dict:
         """Check if the sign-out record exists for today
@@ -183,10 +184,11 @@ class WebSigner:
                                   e.g. {"signdate":"2025-04-18","startdate":"08:52:52","enddate":"18:06:51"}]
         """
         records = self._get_sign_records()
-        for record in records:
-            if record["signdate"] == date and re.match(r"(17|18|19|20|21):\d{2}:\d{2}", record["enddate"]):
-                return True
-        return False
+        return [
+            record
+            for record in records
+            if record["signdate"] == date and re.match(r"(17|18|19|20|21):\d{2}:\d{2}", record["enddate"])
+        ]
 
     def close(self) -> None:
         """Close HTTP session"""

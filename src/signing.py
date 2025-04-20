@@ -135,17 +135,17 @@ def check(config: Config) -> None:
 
             if now.hour < 17:
                 action = "signin"
-                have_signed = signer.check_signin(today_str)
+                records = signer.check_signin(today_str)
             else:
                 action = "signout"
-                have_signed = signer.check_signout(today_str)
+                records = signer.check_signout(today_str)
 
-            if have_signed:
-                logger.info(f"Check {action} success")
-                # notifier.send_message(f"[NTU Auto Signing] Check {action} success", "")
+            if records:
+                logger.info(f"Check {action} success: {records}")
+                # notifier.send_message(f"[NTU Auto Signing] Check {action} success", str(records))
             else:
-                logger.error(f"Check {action} failed")
-                notifier.send_message("[NTU Auto Signing] 出事啦 阿伯", "")
+                logger.error(f"Check {action} failed: {records}")
+                notifier.send_message("[NTU Auto Signing] 出事啦 阿伯", str(records))
 
         except Exception as e:
             error_data = {"t": -1, "msg": str(e)}
